@@ -1,25 +1,7 @@
 import os
 import sys
-import json
-
-def file_to_file(fname, out_fname):
-    map_dict = {}
-    with open(fname, "r") as map_file:
-        for line in map_file:
-             num, cls_num, name = line.split(" ")
-             map_dict[num] = (cls_num.strip(), name.strip())
-    with open(out_fname, "w") as out_file:
-        json.dump(map_dict, out_file)
-
-def file_to_dist(fname):
-    with open(fname, "r") as dict_file:
-        data = json.load(dict_file)
-        return data
 
 if __name__ == "__main__":
-    file_to_file("map_clsloc.txt", "clsloc_dict.txt")
-    exit(0)
-
     if len(sys.argv) < 4:
         exit("Need paths to SD dataset, ImageNet, and output file")
     sd_dataset = sys.argv[1]
