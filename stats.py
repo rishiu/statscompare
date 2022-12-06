@@ -31,7 +31,12 @@ def get_wavelet_coeffs(img, height, order):
         coeffs = pyr.pyr_coeffs(typ)
         y,binEdges = np.histogram(coeffs,bins=100)
         bincenters = 0.5 * (binEdges[1:]+binEdges[:-1])
-        coeff_dict[typ] = bincenters
+
+        y[y<=0] = 1
+        y = np.log(y)
+        y /= np.max(y)
+
+        coeff_dict[typ] = (bincenters, y)
     return coeff_dict
 
 
