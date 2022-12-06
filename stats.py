@@ -2,6 +2,8 @@ import numpy as np
 from PIL import Image
 import pyrtools as pt
 import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
+from mpl_toolkits.mplot3d import Axes3D
 import scipy
 from scipy.optimize import curve_fit
 
@@ -16,27 +18,35 @@ def get_avg_fft(imgs, shape):
     avg_fft /= len(imgs)
     return avg_fft
 
+def get_contour_plot(fft):
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+
+    ax.contour3D(fft)
+    ax.view_init(-90,0,0)
+    fig.canvas.draw()
+
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    return data
+
 def get_wavelet_coeffs(img, height, order):
     # Return data in a way that can be plotted easily
-    if order not in [0,1,3,5]:
-        print("order must be one of 0, 1, 3, or 5!")
-        return
+    # if order not in [0,1,3,5]:
+    #     print("order must be one of 0, 1, 3, or 5!")
+    #     return
     pyr = pt.pyramids.SteerablePyramidFreq(img, height=height, order=order)
-    types = ['residual_lowpass', 'residual_highpass']
+    types = []
     for i in range(height):
         for j in range(order+1):
             types.append((i,j))
     coeff_dict = {}
-    for typ in types:
-        coeffs = pyr.pyr_coeffs(typ)
-        y,binEdges = np.histogram(coeffs,bins=100)
-        bincenters = 0.5 * (binEdges[1:]+binEdges[:-1])
-
-        y[y<=0] = 1
-        y = np.log(y)
-        y /= np.max(y)
-
-        coeff_dict[typ] = (bincenters, y)
+    for band in range(order+1):
+        band_coeffs = []
+        for h in range(height):
+            coeffs = pyr.pyr_coeffs[(h,band)]
+            band_coeffs.extend(coeffs)
+        coeff_dict[band] = band_coeffs
     return coeff_dict
 
 
