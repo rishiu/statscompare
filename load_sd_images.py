@@ -1,15 +1,11 @@
 import numpy as np
 from PIL import Image
 import sys
-from utils import file_to_dict, get_common_synsets
+from utils import file_to_dict, get_common_synsets, pre_process_image
 from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
-
-def pre_process_image(img):
-    I = Image.fromarray(img).resize((256,256)).crop((16,16,240,240))
-    return np.array(I)
 
 def get_imgs_from_id(id, fname, data_dir):
     map_dict = file_to_dict(fname)

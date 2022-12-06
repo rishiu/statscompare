@@ -1,5 +1,7 @@
 import json
 import os
+from PIL import Image
+import numpy as np
 
 def file_to_file(fname, out_fname):
     map_dict = {}
@@ -21,3 +23,8 @@ def get_common_synsets(fname):
         for line in common_file:
             synsets.append(int(line.strip()))
     return synsets
+
+def pre_process_image(img):
+    I = Image.fromarray(img).resize((256,256)).crop((16,16,240,240))
+    I /= 255.
+    return np.array(I)

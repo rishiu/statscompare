@@ -1,5 +1,6 @@
 import os
 import sys
+from utils import file_to_dict
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
@@ -9,7 +10,7 @@ if __name__ == "__main__":
     num_to_class_file = sys.argv[3]
     output_file = sys.argv[4]
     
-    num_to_class = file_to_dist(num_to_class_file)
+    num_to_class = file_to_dict(num_to_class_file)
 
     sd_nums = []
     for file in os.listdir(sd_dataset):

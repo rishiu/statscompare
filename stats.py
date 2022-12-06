@@ -44,7 +44,7 @@ def get_wavelet_coeffs(img, height, order):
     for band in range(order+1):
         band_coeffs = []
         for h in range(height):
-            coeffs = pyr.pyr_coeffs[(h,band)]
+            coeffs = pyr.pyr_coeffs[(h,band)].flatten()
             band_coeffs.extend(coeffs)
         coeff_dict[band] = band_coeffs
     return coeff_dict
@@ -75,7 +75,7 @@ def fit_gen_gaussian(xx, yy):
         denom = 2 * (s / p) * scipy.special.gamma(1 / p)
         return (num / denom)
 
-    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=([0,0.4],[10,0.8]))
+    popt, pcov = curve_fit(gen_gaussian, xx, yy)
 
     return popt
 
