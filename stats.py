@@ -18,6 +18,12 @@ def get_avg_fft(imgs, shape):
     avg_fft /= len(imgs)
     return avg_fft
 
+def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
+        num = np.exp(-np.abs(xx_ / s)**p)
+        denom = 2 * (s / p) * scipy.special.gamma(1 / p)
+        return (num / denom)
+
+
 def get_contour_plot(fft):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
@@ -44,8 +50,8 @@ def get_wavelet_coeffs(img, height, order):
     for band in range(order+1):
         band_coeffs = []
         for h in range(height):
-            coeffs = pyr.pyr_coeffs[(h,band)]
-            band_coeffs.extend(coeffs)
+            coeffs = pyr.pyr_coeffs[(h,band)].flatten()
+            band_coeffs.extend(list(coeffs))
         coeff_dict[band] = band_coeffs
     return coeff_dict
 

@@ -2,10 +2,11 @@ import numpy as np
 from PIL import Image
 import sys
 from utils import file_to_dict, get_common_synsets
-from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian
+from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian, gen_gaussian
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
+
 
 def pre_process_image(img):
     I = Image.fromarray(img).resize((256,256)).crop((16,16,240,240))
@@ -36,11 +37,11 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
 
     pyr_coeffs = {}
     for band in range(order+1):
-        for h in range(height):
-            pyr_coeffs[(h,band)] = []
+        pyr_coeffs[band] = []
 
     for img in imgs:
-        wmm_coeffs = get_wavelet_coeffs(img, height=3)
+        img = pre_process_image(img)
+        wmm_coeffs = get_wavelet_coeffs(img, height=height, order=order)
         for key in wmm_coeffs.keys():
             pyr_coeffs[key].extend(wmm_coeffs[key])
     
@@ -49,17 +50,27 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
 def fit_wmm(coeffs, height, order):
     params = {}
     for band in range(order+1):
-        for h in range(height):
-            y,binEdges=np.histogram(coeffs[(h,band)],bins=200)
-            y = y.astype(np.float64)
-            bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
-            
-            y[y<=0] = 1.
-            y = np.log(y)
-            y /= np.max(y)
+        print(np.max(coeffs[band]))
+        y,binEdges=np.histogram(coeffs[band],bins=200)
+        y = y.astype(np.float64)
+        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
+        
+        y[y<=0] = 1.
+        y = np.log(y)
+        y /= np.max(y)
 
-            s, p = fit_gen_gaussian(bincenters / len(bincenters) / 2, y)
-            params[(h,band)] = (s,p)
+        s, p = fit_gen_gaussian(bincenters, y)
+        params[band] = (s,p)
+        
+        y2 = gen_gaussian(bincenters, s, p)
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(bincenters, y)
+        ax.plot(bincenters, y2)
+        
+        plt.show()
+        plt.savefig("wmm.jpg")
     return params
 
 def fit_fft_power_law(fft, shape):
@@ -67,7 +78,7 @@ def fit_fft_power_law(fft, shape):
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.log(np.square(np.abs(fft)))
+    fft = np.abs(fft)
     
     # ax.view_init(90,00,0)
     # ax.plot_wireframe(xx,yy,fft)
@@ -104,7 +115,7 @@ def fit_fft_power_law(fft, shape):
             ax[i].plot(xx_,ffts[i])            
         yy = As[i] / (xx**gs[i])
         ax[i].plot(xx,yy)
-    plt.savefig("test"+str(np.random.randint(100))+".jpg")
+    plt.savefig("test.jpg")
 
     return As, gs
 
@@ -119,6 +130,7 @@ def test(fname):
         params = fit_wmm(coeffs, height=5, order=4)
         print(params)
         print(A,g)
+        break
 
 
 if __name__ == "__main__":
