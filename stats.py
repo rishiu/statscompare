@@ -50,7 +50,7 @@ def fit_power_law(xx, yy):
         yy_ = A / (xx_**gamma + 1e-15)
         return yy_
 
-    popt, pcov = curve_fit(power_law, xx, yy, bounds=(0,[1000,5]))
+    popt, pcov = curve_fit(power_law, xx, yy, bounds=(0,[150000,5]))
 
     return popt
 

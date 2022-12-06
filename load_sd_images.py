@@ -4,6 +4,8 @@ import sys
 from utils import file_to_dict, get_common_synsets
 from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits import mplot3d
 
 def pre_process_image(img):
     I = Image.fromarray(img).resize((256,256)).crop((16,16,240,240))
@@ -11,11 +13,12 @@ def pre_process_image(img):
 
 def get_imgs_from_id(id, fname, data_dir):
     map_dict = file_to_dict(fname)
-    class_name = map_dict["n"+str(id)]
+    class_name = map_dict["n0"+str(id)]
+    print(class_name)
 
     imgs = []
     for i in range(10):
-        img = np.array(Image.open(data_dir+class_name+str(i)+".jpg").convert('L'))
+        img = np.array(Image.open(data_dir+class_name[1]+str(i)+".jpg").convert('L'))
         imgs.append(img)
     return imgs
 
@@ -28,36 +31,56 @@ def get_class_fft(id, data_dir, map_fname, shape=None):
     return fft
 
 def fit_fft_power_law(fft, shape):
-    fft_1 = fft[:shape/2,shape/2]
-    fft_2 = fft[shape/2+1:,shape/2]
-    fft_3 = fft[shape/2,:shape/2]
-    fft_4 = fft[shape/2,shape/2+1:]
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
+    
+    fft = np.abs(fft)
+    
+    ax.view_init(90,00,0)
+    ax.plot_wireframe(xx,yy,fft)
+    plt.savefig("test.jpg")
+    #return
+    
+    #print(shape/2, shape)
+    s2 = int(shape/2)
+    fft_1 = fft[:s2-1,s2]
+    fft_2 = fft[s2+1:,s2]
+    fft_3 = fft[s2,:s2-1]
+    fft_4 = fft[s2,s2+1:]
     ffts = [fft_1, fft_2, fft_3, fft_4]
 
-    xx = np.arange(0,shape/2)
+    xx = np.arange(1,shape/2)
+    xx_ = np.arange(shape/2-1,0,-1)
 
     As = []
     gs = []
     for i in range(4):
-        A, g = fit_power_law(xx,ffts[i])
+        if i % 2 == 1:
+            A, g = fit_power_law(xx,ffts[i])
+        else:
+            A, g = fit_power_law(xx_,ffts[i])
         As.append(A)
         gs.append(g)
+    print(As, gs)
     
     fig, ax = plt.subplots(4)
 
     for i in range(4):
-        ax[i].plot(xx,ffts[i])
+        if i % 2 == 1:
+            ax[i].plot(xx,ffts[i])
+        else:
+            ax[i].plot(xx_,ffts[i])            
         yy = As[i] / (xx**gs[i])
         ax[i].plot(xx,yy)
-    plt.show()
+    plt.savefig("test"+str(np.random.randint(100))+".jpg")
 
 def test(fname):
     common_synsets = get_common_synsets(fname)
 
     for synset in common_synsets:
-        fft = get_class_fft(synset, "./bilderjpg/", "./map_clsloc.txt", shape=(224,224))
-        fit_fft_power_law(fft)
-        break
+        fft = get_class_fft(synset, "../bilderjpg/", "./clsloc_dict.txt", shape=(224,224))
+        fit_fft_power_law(fft, shape=224)
 
 if __name__ == "__main__":
     test(sys.argv[1])
