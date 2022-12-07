@@ -3,14 +3,24 @@ from PIL import Image
 import os
 import sys
 from utils import pre_process_image, get_common_synsets
-from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian
+from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian, gen_gaussian
 import matplotlib.pyplot as plt
+import json
+from tqdm import tqdm
 
 def get_imgs_from_id(id, data_dir):
     imgs = []
 
-    for file in os.listdir(data_dir+"n0"+str(id)):
-        img = np.array(Image.open(file).convert('L'))
+    id_s = "{:08d}".format(id)
+
+    count = 0
+    for file in os.listdir(data_dir+"n"+id_s):
+        if count == 10:
+            break
+        if np.random.random() < 0.5:
+            continue
+        count += 1
+        img = np.array(Image.open(data_dir+"n"+id_s+"/"+file).convert('L'))
         img = pre_process_image(img)
         imgs.append(img)
     return imgs
@@ -29,10 +39,10 @@ def get_class_wmm(id, data_dir, height, order):
     pyr_coeffs = {}
     for band in range(order+1):
         for h in range(height):
-            pyr_coeffs[(h,band)] = []
+            pyr_coeffs[band] = []
 
     for img in imgs:
-        wmm_coeffs = get_wavelet_coeffs(img, height=3)
+        wmm_coeffs = get_wavelet_coeffs(img, height=height, order=order)
         for key in wmm_coeffs.keys():
             pyr_coeffs[key].extend(wmm_coeffs[key])
     
@@ -41,17 +51,28 @@ def get_class_wmm(id, data_dir, height, order):
 def fit_wmm(coeffs, height, order):
     params = {}
     for band in range(order+1):
-        for h in range(height):
-            y,binEdges=np.histogram(coeffs[(h,band)],bins=200)
-            y = y.astype(np.float64)
-            bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
-            
-            y[y<=0] = 1.
-            y = np.log(y)
-            y /= np.max(y)
+        y,binEdges=np.histogram(coeffs[band],bins=100)
+        y = y.astype(np.float64)
+        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
+        
+        y[y<=0] = 1.
+        y = np.log(y)
+        y /= np.max(y)
+        
+        bc = bincenters# / np.max(bincenters)
 
-            s, p = fit_gen_gaussian(bincenters / len(bincenters) / 2, y)
-            params[(h,band)] = (s,p)
+        s, p = fit_gen_gaussian(bc, y)
+        params[band] = (s,p)
+        
+        y2 = gen_gaussian(bc, s, p)
+    
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(bc, y)
+        ax.plot(bc, y2)
+        
+        plt.show()
+        plt.savefig("wmm.jpg")
     return params
 
 def fit_fft_power_law(fft, shape):
@@ -59,7 +80,7 @@ def fit_fft_power_law(fft, shape):
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.log(np.square(np.abs(fft)))
+    fft = np.abs(fft)
     
     s2 = int(shape/2)
     fft_1 = fft[:s2-1,s2]
@@ -80,20 +101,42 @@ def fit_fft_power_law(fft, shape):
             A, g = fit_power_law(xx_,ffts[i])
         As.append(A)
         gs.append(g)
+        
+    fig, ax = plt.subplots(4)
+
+    for i in range(4):
+        if i % 2 == 1:
+            ax[i].plot(xx,ffts[i])
+        else:
+            ax[i].plot(xx_,ffts[i])            
+        yy = As[i] / (xx**gs[i])
+        ax[i].plot(xx,yy)
+    plt.savefig("test.jpg")
 
     return As, gs
 
 def test(fname):
     common_synsets = get_common_synsets(fname)
 
-    for synset in common_synsets:
-        fft = get_class_fft(synset, "../bilderjpg/", "./clsloc_dict.txt", shape=(224,224))
+    data_dict = {}
+    for synset in tqdm(common_synsets):
+        class_data = {}
+        
+        fft = get_class_fft(synset, "../ImageNet/Data/CLS-LOC/train/", shape=(224,224))
         A, g = fit_fft_power_law(fft, shape=224)
 
-        coeffs = get_class_wmm(synset, "../bilderjpg/", "./clsloc_dict.txt", height=5, order=4)
+        coeffs = get_class_wmm(synset, "../ImageNet/Data/CLS-LOC/train/", height=5, order=4)
         params = fit_wmm(coeffs, height=5, order=4)
-        print(params)
-        print(A,g)
+        
+        class_data["A"] = A
+        class_data["g"] = g
+        class_data["params"] = params
+        
+        data_dict[synset] = class_data
+
+    return data_dict
 
 if __name__ == "__main__":
-    test(sys.argv[1])
+    data = test(sys.argv[1])
+    with open("imn_output.json", "w") as out_file:
+        json.dump(data, out_file)

@@ -2,15 +2,22 @@ import numpy as np
 from PIL import Image
 import sys
 from utils import file_to_dict, get_common_synsets, pre_process_image
-from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian
+from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian, gen_gaussian
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
+from tqdm import tqdm
+import json
 
 def get_imgs_from_id(id, fname, data_dir):
     map_dict = file_to_dict(fname)
-    class_name = map_dict["n0"+str(id)]
-    print(class_name)
+    id_s = "{:08d}".format(id)
+    try:
+        class_name = map_dict["n"+id_s]
+        #print(class_name)
+    except:
+        print("Class "+str(id)+" not found")
+        return []
 
     imgs = []
     for i in range(10):
@@ -32,11 +39,10 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
 
     pyr_coeffs = {}
     for band in range(order+1):
-        for h in range(height):
-            pyr_coeffs[(h,band)] = []
+        pyr_coeffs[band] = []
 
     for img in imgs:
-        wmm_coeffs = get_wavelet_coeffs(img, height=3)
+        wmm_coeffs = get_wavelet_coeffs(img, height=height, order=order)
         for key in wmm_coeffs.keys():
             pyr_coeffs[key].extend(wmm_coeffs[key])
     
@@ -44,18 +50,32 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
 
 def fit_wmm(coeffs, height, order):
     params = {}
+    if len(coeffs[list(coeffs.keys())[0]]) == 0:
+        return params
     for band in range(order+1):
-        for h in range(height):
-            y,binEdges=np.histogram(coeffs[(h,band)],bins=200)
-            y = y.astype(np.float64)
-            bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
-            
-            y[y<=0] = 1.
-            y = np.log(y)
-            y /= np.max(y)
+        #print(np.max(coeffs[band]))
+        y,binEdges=np.histogram(coeffs[band],bins=100)
+        y = y.astype(np.float64)
+        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
+        
+        y[y<=0] = 1.
+        y = np.log(y)
+        y /= np.max(y)
 
-            s, p = fit_gen_gaussian(bincenters / len(bincenters) / 2, y)
-            params[(h,band)] = (s,p)
+        s, p = fit_gen_gaussian(bincenters, y)
+        params[band] = (s,p)
+        
+        y2 = gen_gaussian(bincenters, s, p)
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(bincenters, y)
+        ax.plot(bincenters, y2)
+        
+        plt.show()
+        plt.savefig("wmm.jpg")
+        
+        plt.close()
     return params
 
 def fit_fft_power_law(fft, shape):
@@ -63,7 +83,7 @@ def fit_fft_power_law(fft, shape):
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.log(np.square(np.abs(fft)))
+    fft = np.abs(fft)
     
     # ax.view_init(90,00,0)
     # ax.plot_wireframe(xx,yy,fft)
@@ -100,22 +120,35 @@ def fit_fft_power_law(fft, shape):
             ax[i].plot(xx_,ffts[i])            
         yy = As[i] / (xx**gs[i])
         ax[i].plot(xx,yy)
-    plt.savefig("test"+str(np.random.randint(100))+".jpg")
+    plt.savefig("test.jpg")
+    plt.close()
 
     return As, gs
 
 def test(fname):
     common_synsets = get_common_synsets(fname)
 
-    for synset in common_synsets:
+    data_dict = {}
+    for synset in tqdm(common_synsets):
         fft = get_class_fft(synset, "../bilderjpg/", "./clsloc_dict.txt", shape=(224,224))
         A, g = fit_fft_power_law(fft, shape=224)
 
         coeffs = get_class_wmm(synset, "../bilderjpg/", "./clsloc_dict.txt", height=5, order=4)
         params = fit_wmm(coeffs, height=5, order=4)
-        print(params)
-        print(A,g)
-
+        
+        class_data = {}
+        
+        #class_data["fft"] = list(fft)
+        #class_data["coeffs"] = coeffs
+        class_data["A"] = A
+        class_data["g"] = g
+        class_data["params"] = params
+        
+        data_dict[synset] = class_data
+    
+    return data_dict
 
 if __name__ == "__main__":
-    test(sys.argv[1])
+    data = test(sys.argv[1])
+    with open("sd_output.json", "w") as out_file:
+        json.dump(data, out_file)

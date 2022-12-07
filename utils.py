@@ -34,6 +34,6 @@ def get_common_synsets(fname):
     return synsets
 
 def pre_process_image(img):
+    img = img.astype(float) / 255
     I = Image.fromarray(img).resize((256,256)).crop((16,16,240,240))
-    I /= 255.
     return np.array(I)

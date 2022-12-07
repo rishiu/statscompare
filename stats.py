@@ -9,6 +9,8 @@ from scipy.optimize import curve_fit
 
 def get_avg_fft(imgs, shape):
     avg_fft = np.zeros(shape).astype(np.complex128)
+    if len(imgs) == 0:
+    	return avg_fft
     for img in imgs:   
         img = np.array(Image.fromarray(img).convert('L'))
 
@@ -17,6 +19,11 @@ def get_avg_fft(imgs, shape):
         avg_fft += fft_viz
     avg_fft /= len(imgs)
     return avg_fft
+
+def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
+        num = np.exp(-np.abs(xx_ / s)**p)
+        denom = 2 * (s / p) * scipy.special.gamma(1 / p)
+        return num#(num / denom)
 
 def get_contour_plot(fft):
     fig = plt.figure()
@@ -45,7 +52,7 @@ def get_wavelet_coeffs(img, height, order):
         band_coeffs = []
         for h in range(height):
             coeffs = pyr.pyr_coeffs[(h,band)].flatten()
-            band_coeffs.extend(coeffs)
+            band_coeffs.extend(list(coeffs))
         coeff_dict[band] = band_coeffs
     return coeff_dict
 
@@ -72,10 +79,10 @@ def fit_power_law(xx, yy):
 def fit_gen_gaussian(xx, yy):
     def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
         num = np.exp(-np.abs(xx_ / s)**p)
-        denom = 2 * (s / p) * scipy.special.gamma(1 / p)
-        return (num / denom)
+        #denom = 2 * (s / p) * scipy.special.gamma(1 / p)
+        return num# / denom)
 
-    popt, pcov = curve_fit(gen_gaussian, xx, yy)
+    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=([0,0],[200000,2]))
 
     return popt
 
