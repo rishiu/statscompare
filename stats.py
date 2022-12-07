@@ -9,6 +9,8 @@ from scipy.optimize import curve_fit
 
 def get_avg_fft(imgs, shape):
     avg_fft = np.zeros(shape).astype(np.complex128)
+    if len(imgs) == 0:
+    	return avg_fft
     for img in imgs:   
         img = np.array(Image.fromarray(img).convert('L'))
 
@@ -21,8 +23,7 @@ def get_avg_fft(imgs, shape):
 def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
         num = np.exp(-np.abs(xx_ / s)**p)
         denom = 2 * (s / p) * scipy.special.gamma(1 / p)
-        return (num / denom)
-
+        return num#(num / denom)
 
 def get_contour_plot(fft):
     fig = plt.figure()
@@ -78,10 +79,10 @@ def fit_power_law(xx, yy):
 def fit_gen_gaussian(xx, yy):
     def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
         num = np.exp(-np.abs(xx_ / s)**p)
-        denom = 2 * (s / p) * scipy.special.gamma(1 / p)
-        return (num / denom)
+        #denom = 2 * (s / p) * scipy.special.gamma(1 / p)
+        return num# / denom)
 
-    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=([0,0.4],[10,0.8]))
+    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=([0,0],[200000,2]))
 
     return popt
 
