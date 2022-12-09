@@ -29,6 +29,9 @@ def get_imgs_from_id(id, fname, data_dir):
 def get_class_fft(id, data_dir, map_fname, shape=None):
     imgs = get_imgs_from_id(id, map_fname, data_dir)
 
+    if len(imgs) == 0:
+        return None
+
     shape = imgs[0].shape[:2] if shape is None else shape
     fft = get_avg_fft(imgs, shape=shape)
 
@@ -36,6 +39,9 @@ def get_class_fft(id, data_dir, map_fname, shape=None):
 
 def get_class_wmm(id, data_dir, map_fname, height, order):
     imgs = get_imgs_from_id(id, map_fname, data_dir)
+
+    if len(imgs) == 0:
+        return None
 
     pyr_coeffs = {}
     for band in range(order+1):
@@ -48,7 +54,7 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
     
     return pyr_coeffs
 
-def fit_wmm(coeffs, height, order):
+def fit_wmm(coeffs, order, plot=False):
     params = {}
     if len(coeffs[list(coeffs.keys())[0]]) == 0:
         return params
@@ -67,18 +73,20 @@ def fit_wmm(coeffs, height, order):
         
         y2 = gen_gaussian(bincenters, s, p)
         
-        #fig = plt.figure()
-        #ax = fig.add_subplot(111)
-        #ax.plot(bincenters, y)
-        #ax.plot(bincenters, y2)
-        
-        #plt.show()
-        #plt.savefig("wmm.jpg")
-        
-        #plt.close()
+        if plot:
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(bincenters, y)
+            ax.plot(bincenters, y2)
+            
+            plt.show()
+            plt.savefig("wmm.jpg")
+            
+            plt.close()
+
     return params
 
-def fit_fft_power_law(fft, shape):
+def fit_fft_power_law(fft, shape, plot=False):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
@@ -117,35 +125,43 @@ def fit_fft_power_law(fft, shape):
         As.append(A)
         gs.append(g)
     
-    fig, ax = plt.subplots(4)
+    if plot:
+        fig, ax = plt.subplots(4)
 
-    for i in range(4):
-        if i % 2 == 1:
-            ax[i].plot(xx,ffts[i])
-        else:
-            ax[i].plot(xx_,ffts[i])            
-        yy = As[i] / (xx**gs[i])
-        ax[i].plot(xx,yy)
-    plt.savefig("test2.jpg")
-    plt.close()
+        for i in range(4):
+            if i % 2 == 1:
+                ax[i].plot(xx,ffts[i])
+            else:
+                ax[i].plot(xx_,ffts[i])            
+            yy = As[i] / (xx**gs[i])
+            ax[i].plot(xx,yy)
+        plt.savefig("test.jpg")
+        plt.close()
 
     return As, gs
 
 def test(fname):
     common_synsets = get_common_synsets(fname)
+    order = 4
+    height = 5
 
     data_dict = {}
     for synset in tqdm(common_synsets):
-        fft = get_class_fft(synset, "../bilderjpg/", "./clsloc_dict.txt", shape=(224,224))
-        A, g = fit_fft_power_law(fft, shape=224)
-
-        coeffs = get_class_wmm(synset, "../bilderjpg/", "./clsloc_dict.txt", height=5, order=4)
-        params = fit_wmm(coeffs, height=5, order=4)
-        
         class_data = {}
+
+        fft = get_class_fft(synset, "../bilderjpg/", "./clsloc_dict.txt", shape=(224,224))
+        A, g = -100, -100
+        if fft is not None:            
+            A, g = fit_fft_power_law(fft, shape=224)
+
+        coeffs = get_class_wmm(synset, "../bilderjpg/", "./clsloc_dict.txt", height=height, order=order)
+        params = {idx: (-1,-1) for idx in range(order)}
+        if coeffs is not None:
+            params = fit_wmm(coeffs, order=order) 
         
         #class_data["fft"] = list(fft)
         #class_data["coeffs"] = coeffs
+        
         class_data["A"] = A
         class_data["g"] = g
         class_data["params"] = params
