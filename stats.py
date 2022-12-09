@@ -70,7 +70,7 @@ def fit_power_law2d(xx, yy, zz):
 
     return popt
 
-def fit_power_law(xx, yy, bounded):
+def fit_power_law(xx, yy, bounded=False):
     def power_law(xx_, A, gamma):
         yy_ = A / (xx_**gamma + 1e-15)
         return yy_
@@ -137,7 +137,7 @@ def fit_fft_power_law(fft, shape, plot=False):
                 ax[i].plot(xx_,ffts[i])            
             yy = As[i] / (xx**gs[i])
             ax[i].plot(xx,yy)
-        plt.savefig("A_g"+str(time.time())".jpg")
+        plt.savefig("A_g"+str(time.time())+".jpg")
         plt.close()
 
     return As, gs
