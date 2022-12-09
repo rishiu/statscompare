@@ -10,8 +10,10 @@ from scipy.optimize import curve_fit
 def get_avg_fft(imgs, shape):
     avg_fft = np.zeros(shape).astype(np.complex128)
     if len(imgs) == 0:
-    	return avg_fft
-    for img in imgs:   
+        return avg_fft
+    for img in imgs:
+        if not np.any(img):
+            continue   
         img = np.array(Image.fromarray(img).convert('L'))
 
         fft = np.fft.fftn(img, s=shape)
@@ -86,10 +88,70 @@ def fit_gen_gaussian(xx, yy):
 
     return popt
 
-def test_power_law_fit():
-    xx = np.arange(0,50).astype(np.float64)
-    A = 100
-    gamma = 2
-    yy = A / (xx**gamma + 1e-15)
-    print(yy)
-    print(fit_power_law(xx,yy))
+def fit_fft_power_law(fft, shape, plot=False):
+    xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
+    
+    fft = np.abs(fft)
+    
+    s2 = int(shape/2)
+    fft_1 = fft[:s2-1,s2]
+    fft_2 = fft[s2+1:,s2]
+    fft_3 = fft[s2,:s2-1]
+    fft_4 = fft[s2,s2+1:]
+    ffts = [fft_1, fft_2, fft_3, fft_4]
+
+    xx = np.arange(1,shape/2)
+    xx_ = np.arange(shape/2-1,0,-1)
+
+    As = []
+    gs = []
+    for i in range(4):
+        if i % 2 == 1:
+            A, g = fit_power_law(xx,ffts[i])
+        else:
+            A, g = fit_power_law(xx_,ffts[i])
+        As.append(A)
+        gs.append(g)
+    
+    if plot:
+        fig, ax = plt.subplots(4)
+
+        for i in range(4):
+            if i % 2 == 1:
+                ax[i].plot(xx,ffts[i])
+            else:
+                ax[i].plot(xx_,ffts[i])            
+            yy = As[i] / (xx**gs[i])
+            ax[i].plot(xx,yy)
+        plt.savefig("test.jpg")
+        plt.close()
+
+    return As, gs
+
+def fit_wmm(coeffs, order, plot=False):
+    params = {}
+    for band in range(order+1):
+        y,binEdges=np.histogram(coeffs[band],bins=100)
+        y = y.astype(np.float64)
+        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
+        
+        y[y<=0] = 1.
+        y = np.log(y)
+        y /= np.max(y)
+        
+        bc = bincenters# / np.max(bincenters)
+
+        s, p = fit_gen_gaussian(bc, y)
+        params[band] = (s,p)
+        
+        y2 = gen_gaussian(bc, s, p)
+    
+        if plot:
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.plot(bc, y)
+            ax.plot(bc, y2)
+            
+            plt.show()
+            plt.savefig("wmm.jpg")
+    return params
