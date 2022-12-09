@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 import sys
 from utils import file_to_dict, get_common_synsets, pre_process_image
-from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian, gen_gaussian
+from stats import get_avg_fft, get_wavelet_coeffs, fit_fft_power_law, fit_wmm
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits import mplot3d
@@ -53,85 +53,6 @@ def get_class_wmm(id, data_dir, map_fname, height, order):
             pyr_coeffs[key].extend(wmm_coeffs[key])
     
     return pyr_coeffs
-
-def fit_wmm(coeffs, order, plot=False):
-    params = {}
-    if len(coeffs[list(coeffs.keys())[0]]) == 0:
-        return params
-    for band in range(order+1):
-        #print(np.max(coeffs[band]))
-        y,binEdges=np.histogram(coeffs[band],bins=100)
-        y = y.astype(np.float64)
-        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
-        
-        y[y<=0] = 1.
-        y = np.log(y)
-        y /= np.max(y)
-
-        s, p = fit_gen_gaussian(bincenters, y)
-        params[band] = (s,p)
-        
-        y2 = gen_gaussian(bincenters, s, p)
-        
-        if plot:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(bincenters, y)
-            ax.plot(bincenters, y2)
-            
-            plt.show()
-            plt.savefig("wmm.jpg")
-            
-            plt.close()
-    return params
-
-def fit_fft_power_law(fft, shape, plot=False):
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
-    
-    fft = np.abs(fft)
-    
-    # ax.view_init(90,00,0)
-    # ax.plot_wireframe(xx,yy,fft)
-    # plt.savefig("test.jpg")
-    # #return
-    
-    #print(shape/2, shape)
-    s2 = int(shape/2)
-    fft_1 = fft[:s2-1,s2]
-    fft_2 = fft[s2+1:,s2]
-    fft_3 = fft[s2,:s2-1]
-    fft_4 = fft[s2,s2+1:]
-    ffts = [fft_1, fft_2, fft_3, fft_4]
-
-    xx = np.arange(1,shape/2)
-    xx_ = np.arange(shape/2-1,0,-1)
-
-    As = []
-    gs = []
-    for i in range(4):
-        if i % 2 == 1:
-            A, g = fit_power_law(xx,ffts[i])
-        else:
-            A, g = fit_power_law(xx_,ffts[i])
-        As.append(A)
-        gs.append(g)
-    
-    if plot:
-        fig, ax = plt.subplots(4)
-
-        for i in range(4):
-            if i % 2 == 1:
-                ax[i].plot(xx,ffts[i])
-            else:
-                ax[i].plot(xx_,ffts[i])            
-            yy = As[i] / (xx**gs[i])
-            ax[i].plot(xx,yy)
-        plt.savefig("test.jpg")
-        plt.close()
-
-    return As, gs
 
 def test(fname):
     common_synsets = get_common_synsets(fname)

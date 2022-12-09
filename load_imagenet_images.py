@@ -3,7 +3,7 @@ from PIL import Image
 import os
 import sys
 from utils import pre_process_image, get_common_synsets
-from stats import get_avg_fft, get_wavelet_coeffs, fit_power_law, fit_gen_gaussian, gen_gaussian
+from stats import get_avg_fft, get_wavelet_coeffs, fit_fft_power_law, fit_wmm
 import matplotlib.pyplot as plt
 import json
 from tqdm import tqdm
@@ -52,75 +52,6 @@ def get_class_wmm(id, data_dir, height, order):
             pyr_coeffs[key].extend(wmm_coeffs[key])
     
     return pyr_coeffs
-
-def fit_wmm(coeffs, order, plot=False):
-    params = {}
-    for band in range(order+1):
-        y,binEdges=np.histogram(coeffs[band],bins=100)
-        y = y.astype(np.float64)
-        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
-        
-        y[y<=0] = 1.
-        y = np.log(y)
-        y /= np.max(y)
-        
-        bc = bincenters# / np.max(bincenters)
-
-        s, p = fit_gen_gaussian(bc, y)
-        params[band] = (s,p)
-        
-        y2 = gen_gaussian(bc, s, p)
-    
-        if plot:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            ax.plot(bc, y)
-            ax.plot(bc, y2)
-            
-            plt.show()
-            plt.savefig("wmm.jpg")
-    return params
-
-def fit_fft_power_law(fft, shape, plot=False):
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
-    
-    fft = np.abs(fft)
-    
-    s2 = int(shape/2)
-    fft_1 = fft[:s2-1,s2]
-    fft_2 = fft[s2+1:,s2]
-    fft_3 = fft[s2,:s2-1]
-    fft_4 = fft[s2,s2+1:]
-    ffts = [fft_1, fft_2, fft_3, fft_4]
-
-    xx = np.arange(1,shape/2)
-    xx_ = np.arange(shape/2-1,0,-1)
-
-    As = []
-    gs = []
-    for i in range(4):
-        if i % 2 == 1:
-            A, g = fit_power_law(xx,ffts[i])
-        else:
-            A, g = fit_power_law(xx_,ffts[i])
-        As.append(A)
-        gs.append(g)
-        
-    if plot:
-        fig, ax = plt.subplots(4)
-
-        for i in range(4):
-            if i % 2 == 1:
-                ax[i].plot(xx,ffts[i])
-            else:
-                ax[i].plot(xx_,ffts[i])            
-            yy = As[i] / (xx**gs[i])
-            ax[i].plot(xx,yy)
-        plt.savefig("test.jpg")
-
-    return As, gs
 
 def test(fname):
     common_synsets = get_common_synsets(fname)
