@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 import scipy
+import time
 from scipy.optimize import curve_fit
 
 def get_avg_fft(imgs, shape):
@@ -74,7 +75,7 @@ def fit_power_law(xx, yy, bounded):
         yy_ = A / (xx_**gamma + 1e-15)
         return yy_
         
-    bounds = (0,[150000,5] if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
+    bounds = (0,[150000,5]) if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
 
     popt, pcov = curve_fit(power_law, xx, yy, bounds=(0,[150000,5]))
 
@@ -86,7 +87,7 @@ def fit_gen_gaussian(xx, yy, bounded=False):
         #denom = 2 * (s / p) * scipy.special.gamma(1 / p)
         return num# / denom)
 
-    bounds = ([0,0],[200000,2] if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
+    bounds = ([0,0],[200000,2]) if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
 
     popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=bounds)
 
@@ -122,6 +123,9 @@ def fit_fft_power_law(fft, shape, plot=False):
                 A, g = fit_power_law(xx_[:-1],ffts[i][:-1])
         As.append(A)
         gs.append(g)
+        
+    if np.max(A) > 200000 or np.max(g) > 5:
+        plot=True
     
     if plot:
         fig, ax = plt.subplots(4)
@@ -133,7 +137,7 @@ def fit_fft_power_law(fft, shape, plot=False):
                 ax[i].plot(xx_,ffts[i])            
             yy = As[i] / (xx**gs[i])
             ax[i].plot(xx,yy)
-        plt.savefig("test.jpg")
+        plt.savefig("A_g"+str(time.time())".jpg")
         plt.close()
 
     return As, gs
