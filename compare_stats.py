@@ -14,31 +14,60 @@ def plot_hist(syn_fname, real_fname, synset_fname):
 
     synsets = get_common_synsets(synset_fname)
 
-    sA = [[]*4]
-    sg = [[]*4]
-    ss = [[]*4]
-    sp = [[]*4]
+    sA = [[],[],[],[]]
+    sg = [[],[],[],[]]
+    ss = [[],[],[],[]]
+    sp = [[],[],[],[]]
 
-    rA = [[]*4]
-    rg = [[]*4]
-    rs = [[]*4]
-    rp = [[]*4]
+    rA = [[],[],[],[]]
+    rg = [[],[],[],[]]
+    rs = [[],[],[],[]]
+    rp = [[],[],[],[]]
+    
+    print(sA)
 
     for synset in synsets:
-        sdata = syn_data[synset]
-        rdata = real_data[synset]
+        sdata = syn_data[str(synset)]
+        rdata = real_data[str(synset)]
+        if len(sdata["params"].keys()) == 0 or len(rdata["params"].keys()) == 0:
+            continue
+        for k in range(2):
+            sA[k].append(0.5*(sdata["A"][k*2] + sdata["A"][k*2+1]))      
+            sg[k].append(0.5*(sdata["g"][k*2] + sdata["g"][k*2+1]))
+            rA[k].append(0.5*(rdata["A"][k*2] + sdata["A"][k*2+1]))
+            rg[k].append(0.5*(rdata["g"][k+2] + sdata["g"][k*2+1]))
         for i in range(4):
-            sA[i].append(sdata["A"][i])
-            sg[i].append(sdata["g"][i])
-            ss[i].append(sdata["params"][i][0])           
-            sp[i].append(sdata["params"][i][1])
+            #sA[i].append(sdata["A"][i])
+            #sg[i].append(sdata["g"][i])
+            ss[i].append(sdata["params"][str(i)][0])           
+            sp[i].append(sdata["params"][str(i)][1])
 
-            rA[i].append(rdata["A"][i])
-            rg[i].append(rdata["g"][i])
-            rs[i].append(rdata["params"][i][0])           
-            rp[i].append(rdata["params"][i][1])
+            #rA[i].append(rdata["A"][i])
+            #rg[i].append(rdata["g"][i])
+            rs[i].append(rdata["params"][str(i)][0])           
+            rp[i].append(rdata["params"][str(i)][1])
 
-    plt.hist(sA, color="red", label="Synthetic A")
-    plt.hist(rA, color="red", label="Real A")
-    plt.legend()
+    fig, ax = plt.subplots(2,4)
+    fig.set_size_inches(10,10)
+        
+    colors = ['r', 'g', 'b', 'm']
+    arr_of_in = [ss,rs]
+    s = arr_of_in[0]
+    r = arr_of_in[1]
+    for i in range(4):
+        ax[0][i].hist(s[i], bins=100, range=(np.min(s[i]) * 0.9,np.max(s[i])), color=colors[i], label="Synthetic "+str(i))
+        #ax[0][i].axvline(x=np.median(s[i]),linestyle='--',color='yellow')
+        ax[0][i].axvline(x=np.mean(s[i]),linestyle='-',label="Mean: "+str(np.mean(s[i])))
+        ax[1][i].hist(r[i], bins=100, range=(np.min(s[i])*0.9,np.max(s[i])), color=colors[i], label="Real" + str(i))
+        #ax[1][i].axvline(x=np.median(r[i]),linestyle='--',color='yellow')
+        ax[1][i].axvline(x=np.mean(r[i]),linestyle='-',label="Mean: "+str(np.mean(r[i])))
+    for i in range(4):
+        ax[0][i].legend()
+        ax[1][i].legend()
+        ax[0][i].set_ylim(0,60)
+        ax[1][i].set_ylim(0,60)
     plt.show()
+    plt.savefig("s_hist.jpg")
+    
+if __name__ == "__main__":
+    plot_hist("./sd_output_ps.json", "./imn_output_ps.json", "out.txt")
