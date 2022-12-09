@@ -67,15 +67,15 @@ def fit_wmm(coeffs, height, order):
         
         y2 = gen_gaussian(bincenters, s, p)
         
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.plot(bincenters, y)
-        ax.plot(bincenters, y2)
+        #fig = plt.figure()
+        #ax = fig.add_subplot(111)
+        #ax.plot(bincenters, y)
+        #ax.plot(bincenters, y2)
         
-        plt.show()
-        plt.savefig("wmm.jpg")
+        #plt.show()
+        #plt.savefig("wmm.jpg")
         
-        plt.close()
+        #plt.close()
     return params
 
 def fit_fft_power_law(fft, shape):
@@ -83,7 +83,7 @@ def fit_fft_power_law(fft, shape):
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.abs(fft)
+    fft = np.abs(fft)**2
     
     # ax.view_init(90,00,0)
     # ax.plot_wireframe(xx,yy,fft)
@@ -104,10 +104,16 @@ def fit_fft_power_law(fft, shape):
     As = []
     gs = []
     for i in range(4):
-        if i % 2 == 1:
-            A, g = fit_power_law(xx,ffts[i])
-        else:
-            A, g = fit_power_law(xx_,ffts[i])
+        try:
+            if i % 2 == 1:
+                A, g = fit_power_law(xx,ffts[i])
+            else:
+                A, g = fit_power_law(xx_,ffts[i])
+        except:
+            if i % 2 == 1:
+                A, g = fit_power_law(xx[1:], ffts[i][1:])
+            else:
+                A, g = fit_power_law(xx_[:-1], ffts[i][:-1])
         As.append(A)
         gs.append(g)
     
@@ -120,7 +126,7 @@ def fit_fft_power_law(fft, shape):
             ax[i].plot(xx_,ffts[i])            
         yy = As[i] / (xx**gs[i])
         ax[i].plot(xx,yy)
-    plt.savefig("test.jpg")
+    plt.savefig("test2.jpg")
     plt.close()
 
     return As, gs
@@ -147,8 +153,33 @@ def test(fname):
         data_dict[synset] = class_data
     
     return data_dict
+    
+def test_all(fname):
+    common_synsets = get_common_synsets(fname)
+    
+    all_imgs = []
+    for synset in tqdm(common_synsets):
+        imgs = get_imgs_from_id(synset, "./clsloc_dict.txt", "../bilderjpg/")
+        all_imgs.extend(imgs)
+        #break
+    
+    fft = get_avg_fft(all_imgs, shape=(224,224))
+    A, g = fit_fft_power_law(fft, shape=224)
+    print(A,g)
+    
+    fft = np.log(np.square(np.abs(fft)))
+    
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    
+    xx, yy = np.meshgrid(np.arange(224), np.arange(224))
+
+    ax.contour3D(xx,yy,fft)
+    
+    plt.savefig("sd_all_fft.jpg")
 
 if __name__ == "__main__":
-    data = test(sys.argv[1])
-    with open("sd_output.json", "w") as out_file:
-        json.dump(data, out_file)
+    test_all(sys.argv[1])
+    #data = test(sys.argv[1])
+    #with open("sd_output_ps.json", "w") as out_file:
+    #    json.dump(data, out_file)

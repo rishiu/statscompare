@@ -14,13 +14,15 @@ def get_imgs_from_id(id, data_dir):
     id_s = "{:08d}".format(id)
 
     count = 0
+    if not os.path.exists(data_dir+"n"+id_s):
+        return []
     for file in os.listdir(data_dir+"n"+id_s):
         if count == 10:
             break
-        if np.random.random() < 0.5:
+        img = np.array(Image.open(data_dir+"n"+id_s+"/"+file).convert('L'))
+        if img.shape[0] < 256 and img.shape[1] < 256:
             continue
         count += 1
-        img = np.array(Image.open(data_dir+"n"+id_s+"/"+file).convert('L'))
         img = pre_process_image(img)
         imgs.append(img)
     return imgs
@@ -50,6 +52,8 @@ def get_class_wmm(id, data_dir, height, order):
 
 def fit_wmm(coeffs, height, order):
     params = {}
+    if len(coeffs[list(coeffs.keys())[0]]) == 0:
+        return params
     for band in range(order+1):
         y,binEdges=np.histogram(coeffs[band],bins=100)
         y = y.astype(np.float64)
@@ -64,15 +68,15 @@ def fit_wmm(coeffs, height, order):
         s, p = fit_gen_gaussian(bc, y)
         params[band] = (s,p)
         
-        y2 = gen_gaussian(bc, s, p)
+        #y2 = gen_gaussian(bc, s, p)
     
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.plot(bc, y)
-        ax.plot(bc, y2)
+        #fig = plt.figure()
+        #ax = fig.add_subplot(111)
+        #ax.plot(bc, y)
+        #ax.plot(bc, y2)
         
-        plt.show()
-        plt.savefig("wmm.jpg")
+        #plt.show()
+        #plt.savefig("wmm.jpg")
     return params
 
 def fit_fft_power_law(fft, shape):
@@ -80,7 +84,7 @@ def fit_fft_power_law(fft, shape):
     ax = plt.axes(projection='3d')
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.abs(fft)
+    fft = np.abs(fft)**2
     
     s2 = int(shape/2)
     fft_1 = fft[:s2-1,s2]
@@ -135,8 +139,34 @@ def test(fname):
         data_dict[synset] = class_data
 
     return data_dict
+    
+def test_all(fname):
+    common_synsets = get_common_synsets(fname)
+    
+    all_imgs = []
+    for synset in tqdm(common_synsets):
+        imgs = get_imgs_from_id(synset, "../ImageNet/Data/CLS-LOC/train/")
+        all_imgs.extend(imgs)
+        #break
+    
+    fft = get_avg_fft(all_imgs, shape=(224,224))
+    A, g = fit_fft_power_law(fft, shape=224)
+    print(A,g)
+    
+    fft = np.log(np.square(np.abs(fft)))
+    
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    
+    xx, yy = np.meshgrid(np.arange(224), np.arange(224))
+
+    ax.contour3D(xx,yy,fft,levels=10)
+    ax.view_init(azim=0, elev=90)
+    
+    plt.savefig("imn_all_fft.jpg")
 
 if __name__ == "__main__":
-    data = test(sys.argv[1])
-    with open("imn_output.json", "w") as out_file:
-        json.dump(data, out_file)
+    test_all(sys.argv[1])
+    #data = test(sys.argv[1])
+    #with open("imn_output_ps.json", "w") as out_file:
+    #    json.dump(data, out_file)
