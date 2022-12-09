@@ -69,29 +69,33 @@ def fit_power_law2d(xx, yy, zz):
 
     return popt
 
-def fit_power_law(xx, yy):
+def fit_power_law(xx, yy, bounded):
     def power_law(xx_, A, gamma):
         yy_ = A / (xx_**gamma + 1e-15)
         return yy_
+        
+    bounds = (0,[150000,5] if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
 
     popt, pcov = curve_fit(power_law, xx, yy, bounds=(0,[150000,5]))
 
     return popt
 
-def fit_gen_gaussian(xx, yy):
+def fit_gen_gaussian(xx, yy, bounded=False):
     def gen_gaussian(xx_, s, p): # From https://www.cns.nyu.edu/pub/eero/simoncelli05a-preprint.pdf
         num = np.exp(-np.abs(xx_ / s)**p)
         #denom = 2 * (s / p) * scipy.special.gamma(1 / p)
         return num# / denom)
 
-    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=([0,0],[200000,2]))
+    bounds = ([0,0],[200000,2] if bounded else ([-np.inf,-np.inf],[np.inf,np.inf])
+
+    popt, pcov = curve_fit(gen_gaussian, xx, yy, bounds=bounds)
 
     return popt
 
 def fit_fft_power_law(fft, shape, plot=False):
     xx, yy = np.meshgrid(np.arange(shape), np.arange(shape)) 
     
-    fft = np.abs(fft)
+    fft = np.abs(fft)**2
     
     s2 = int(shape/2)
     fft_1 = fft[:s2-1,s2]
@@ -106,10 +110,16 @@ def fit_fft_power_law(fft, shape, plot=False):
     As = []
     gs = []
     for i in range(4):
-        if i % 2 == 1:
-            A, g = fit_power_law(xx,ffts[i])
-        else:
-            A, g = fit_power_law(xx_,ffts[i])
+        try:
+            if i % 2 == 1:
+                A, g = fit_power_law(xx,ffts[i])
+            else:
+                A, g = fit_power_law(xx_,ffts[i])
+        except:
+            if i % 2 == 1:
+                A, g = fit_power_law(xx[1:],ffts[i][1:])
+            else:
+                A, g = fit_power_law(xx_[:-1],ffts[i][:-1])
         As.append(A)
         gs.append(g)
     

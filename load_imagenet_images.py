@@ -108,7 +108,7 @@ def test_all(fname):
     plt.savefig("imn_all_fft.jpg")
 
 if __name__ == "__main__":
-    test_all(sys.argv[1])
-    #data = test(sys.argv[1])
-    #with open("imn_output_ps.json", "w") as out_file:
-    #    json.dump(data, out_file)
+    #test_all(sys.argv[1])
+    data = test(sys.argv[1])
+    with open(sys.argv[2], "w") as out_file:
+        json.dump(data, out_file)
