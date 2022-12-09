@@ -17,7 +17,7 @@ def get_imgs_from_id(id, data_dir):
     if not os.path.exists(data_dir+"n"+id_s):
         return []
     for file in os.listdir(data_dir+"n"+id_s):
-        if count == 10:
+        if count == 40:
             break
         img = np.array(Image.open(data_dir+"n"+id_s+"/"+file).convert('L'))
         if img.shape[0] < 256 and img.shape[1] < 256:
