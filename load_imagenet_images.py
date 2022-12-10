@@ -82,7 +82,7 @@ def test(fname):
 
     return data_dict
     
-def test_all(fname):
+def test_all(fname, height, order):
     common_synsets = get_common_synsets(fname)
     
     all_imgs = []
@@ -90,22 +90,25 @@ def test_all(fname):
         imgs = get_imgs_from_id(synset, "../ImageNet/Data/CLS-LOC/train/")
         all_imgs.extend(imgs)
         #break
+    As = []
+    gs = []
+    params_arr = []
     
-    fft = get_avg_fft(all_imgs, shape=(224,224))
-    A, g = fit_fft_power_law(fft, shape=224)
-    print(A,g)
+    for img in all_imgs:
+    	fft = get_avg_fft([img], shape=(224,224))
+    	A, g = -100, -100
+        if fft is not None:
+            A, g = fit_fft_power_law(fft, shape=224)
+    	As.append(A)
+    	gs.append(g)
+    	
+    	wmm_coeffs = get_wavelet_coeffs(img, height=height, order=order)
+    	params = {idx: (-1,-1) for idx in range(order)}
+        if coeffs is not None:
+            params = fit_wmm(coeffs, order=order)
+        params_arr.append(params)
     
-    fft = np.log(np.square(np.abs(fft)))
-    
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    
-    xx, yy = np.meshgrid(np.arange(224), np.arange(224))
-
-    ax.contour3D(xx,yy,fft,levels=10)
-    ax.view_init(azim=0, elev=90)
-    
-    plt.savefig("imn_all_fft.jpg")
+    return As, gs, params_arr
 
 if __name__ == "__main__":
     #test_all(sys.argv[1])
