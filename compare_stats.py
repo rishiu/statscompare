@@ -27,16 +27,22 @@ def plot_hist(syn_fname, real_fname, synset_fname):
     print(sA)
 
     for synset in synsets:
+        skip = False
         sdata = syn_data[str(synset)]
         rdata = real_data[str(synset)]
         if len(sdata["params"].keys()) == 0 or len(rdata["params"].keys()) == 0:
             continue
         for k in range(2):
+            if sdata["A"] == -100 or rdata["A"] == -100:
+                skip = True
+                continue
             sA[k].append(0.5*(sdata["A"][k*2] + sdata["A"][k*2+1]))      
             sg[k].append(0.5*(sdata["g"][k*2] + sdata["g"][k*2+1]))
             rA[k].append(0.5*(rdata["A"][k*2] + sdata["A"][k*2+1]))
             rg[k].append(0.5*(rdata["g"][k+2] + sdata["g"][k*2+1]))
         for i in range(4):
+            if skip:
+                continue
             #sA[i].append(sdata["A"][i])
             #sg[i].append(sdata["g"][i])
             ss[i].append(sdata["params"][str(i)][0])           
@@ -51,7 +57,7 @@ def plot_hist(syn_fname, real_fname, synset_fname):
     fig.set_size_inches(10,10)
         
     colors = ['r', 'g', 'b', 'm']
-    arr_of_in = [ss,rs]
+    arr_of_in = [sp,rp]
     s = arr_of_in[0]
     r = arr_of_in[1]
     for i in range(4):
@@ -67,7 +73,7 @@ def plot_hist(syn_fname, real_fname, synset_fname):
         ax[0][i].set_ylim(0,60)
         ax[1][i].set_ylim(0,60)
     plt.show()
-    plt.savefig("s_hist.jpg")
+    plt.savefig("p_hist2.jpg")
     
 if __name__ == "__main__":
-    plot_hist("./sd_output_ps.json", "./imn_output_ps.json", "out.txt")
+    plot_hist("./sd_latest.json", "./imn_latest.json", "out.txt")
