@@ -6,7 +6,101 @@ from mpl_toolkits import mplot3d
 from mpl_toolkits.mplot3d import Axes3D
 import scipy
 import time
+import sklearn
 from scipy.optimize import curve_fit
+
+
+def farid_stats(img, height, order):
+    pyr = pt.pyramids.WaveletPyramid(img, height=height)
+    # Order is: Vertical, Horizontal, Diagonal
+
+    weights = {}
+    errors = {}
+    for h in range(height-1):
+        for o in range(3):
+            coeffs = np.abs(pyr.pyr_coeffs[(h,o)])
+            if o == 0: # Vertical
+                Vplus = np.abs(pyr.pyr_coeffs[(h+1,o)])
+                D = np.abs(pyr.pyr_coeffs[(h,2)])
+                Dplus = np.abs(pyr.pyr_coeffs[(h+1,2)])
+                x = np.arange(1,coeffs.shape[0]-1)
+                y = np.arange(1,coeffs.shape[1]-1)
+                xx, yy = np.meshgrid(x, y)
+
+                V = coeffs[xx,yy].flatten()
+                Q = np.zeros((V.shape[0],7))
+                Q[:,0] = coeffs[xx-1,yy].flatten()
+                Q[:,1] = coeffs[xx+1,yy].flatten()
+                Q[:,2] = coeffs[xx,yy-1].flatten()
+                Q[:,3] = coeffs[xx,yy+1].flatten()
+                Q[:,4] = Vplus[xx//2,yy//2].flatten()
+                Q[:,5] = D[xx,yy].flatten()
+                Q[:,6] = Dplus[xx//2,yy//2].flatten()
+
+                w = np.linalg.inv(Q.T @ Q) @ Q.T @ V
+                weights[(h,o)] = w
+
+                E = np.log2(V) - np.log2(np.abs(Q @ w))
+
+                errors[(h,o)] = E
+            if o == 1:
+                Hplus = np.abs(pyr.pyr_coeffs[(h+1,o)])
+                D = np.abs(pyr.pyr_coeffs[(h,2)])
+                Dplus = np.abs(pyr.pyr_coeffs[(h+1,2)])
+                x = np.arange(1,coeffs.shape[0]-1)
+                y = np.arange(1,coeffs.shape[1]-1)
+                xx, yy = np.meshgrid(x, y)
+
+                H = coeffs[xx,yy].flatten()
+                Q = np.zeros((H.shape[0],7))
+                Q[:,0] = coeffs[xx-1,yy].flatten()
+                Q[:,1] = coeffs[xx+1,yy].flatten()
+                Q[:,2] = coeffs[xx,yy-1].flatten()
+                Q[:,3] = coeffs[xx,yy+1].flatten()
+                Q[:,4] = Hplus[xx//2,yy//2].flatten()
+                Q[:,5] = D[xx,yy].flatten()
+                Q[:,6] = Dplus[xx//2,yy//2].flatten()
+
+                w = np.linalg.inv(Q.T @ Q) @ Q.T @ H
+                weights[(h,o)] = w
+
+                E = np.log2(H) - np.log2(np.abs(Q @ w))
+
+                errors[(h,o)] = E
+            if o == 2:
+                Dplus = np.abs(pyr.pyr_coeffs[(h+1,o)])
+                V = np.abs(pyr.pyr_coeffs[(h,0)])
+                H = np.abs(pyr.pyr_coeffs[(h,1)])
+                x = np.arange(1,coeffs.shape[0]-1)
+                y = np.arange(1,coeffs.shape[1]-1)
+                xx, yy = np.meshgrid(x, y)
+
+                D = coeffs[xx,yy].flatten()
+                Q = np.zeros((D.shape[0],7))
+                Q[:,0] = coeffs[xx-1,yy].flatten()
+                Q[:,1] = coeffs[xx+1,yy].flatten()
+                Q[:,2] = coeffs[xx,yy-1].flatten()
+                Q[:,3] = coeffs[xx,yy+1].flatten()
+                Q[:,4] = Dplus[xx//2,yy//2].flatten()
+                Q[:,5] = H[xx,yy].flatten()
+                Q[:,6] = V[xx,yy].flatten()
+
+                w = np.linalg.inv(Q.T @ Q) @ Q.T @ D
+                weights[(h,o)] = w
+
+                E = np.log2(D) - np.log2(np.abs(Q @ w))
+
+                errors[(h,o)] = E
+    
+    img_feature_vec = []
+    for h in range(height-1):
+        for o in range(3):
+            w = weights[(h,o)]
+            e = errors[(h,o)]
+
+            img_feature_vec.extend([np.mean(w), np.std(w)**2, scipy.stats.skew(w), scipy.stats.kurtosis(w)])
+            img_feature_vec.extend([np.mean(e), np.std(e)**2, scipy.stats.skew(e), scipy.stats.kurtosis(e)])
+    return img_feature_vec
 
 def get_avg_fft(imgs, shape):
     avg_fft = np.zeros(shape).astype(np.complex128)
@@ -169,3 +263,7 @@ def fit_wmm(coeffs, order, plot=False):
             plt.show()
             plt.savefig("wmm.jpg")
     return params
+
+
+img = np.array(Image.open("../kite.JPEG").convert("L"))
+farid_stats(img, 4, 3)
